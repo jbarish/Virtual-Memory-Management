@@ -11,7 +11,7 @@ struct frameInfo{
 	int memLoc;
  };
 typedef struct frameInfo* Frame;
-frame dequeueFirst();
-void enqueue(frame);
+Frame dequeueFirst();
+void enqueue(Frame);
 int getNumElements();
 #endif
