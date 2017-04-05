@@ -12,6 +12,6 @@ struct frameInfo{
  };
 typedef struct frameInfo* frame;
 frame dequeueFirst();
-void enqueue(frame prod);
+void enqueue(frame);
 int getNumElements();
 #endif
