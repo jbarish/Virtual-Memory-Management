@@ -10,8 +10,8 @@ struct frameInfo{
 	int proc;
 	int memLoc;
  };
-typedef struct frameInfo* Frame;
-Frame dequeueFirst();
-void enqueue(Frame);
+typedef struct frameInfo* frame;
+frame dequeueFirst();
+void enqueue(frame);
 int getNumElements();
 #endif
