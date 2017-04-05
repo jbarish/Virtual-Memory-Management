@@ -1,5 +1,7 @@
 #include "VMsimulator.h"
 
+#define MEMORY_SIZE 512
+
 /*
  * Justin Barish
  * Jack Kraszewski
@@ -12,27 +14,26 @@ struct page {
 	int pageNumber; /*unique page number */
 	int valid; /*whether page is in memory*/
 	unsigned long accessed; /*time accessed */
-};
-typedef struct page* Page;
+};typedef struct page* Page;
 
 /*store information for each process */
 struct process {
 	int pID; /*id of the process */
 	int totalMem; /*memory the process needs */
-};
-typedef struct process* Process;
+};typedef struct process* Process;
 
 typedef enum {FIFO, LRU, CLOCK} replacementAlgoType; /*data type for replacement algo type */
 
-replacementAlgoType replacementAlgo;
+replacementAlgoType replacementAlgo; /*given as arg*/
 int prePage; /*1 if use prepage, 0 if not, given as arg */
 int pageSize; /*size of pages, given as arg */
 
-int numProcs=0; /*number of proccess in process list */
+int numProcs=0; /*umber of proccess in process list */
 
 Page** pageTableList; /*List of page tables*/
-
 Process* procs; /*List of processes */
+int* memory;
+int pageCounter = 0;
 
 /*read in the processes from the process list */
 void readProcs(char* fileName){
@@ -63,6 +64,24 @@ void readProcs(char* fileName){
 	fclose(fp);
 }
 
+/*load initial set into memory*/
+void defaultLoad(){
+	int framesPerProc = (MEMORY_SIZE/pageSize)/numProcs;
+	memory = (int*)malloc(sizeof(MEMORY_SIZE/pageSize));
+	
+	/*initalize all memory frames to -1 */
+	for(int i = 0; i<MEMORY_SIZE/pageSize; i++){
+		memory[i] = -1;
+	}
+	
+	/*add pages to memory, and set valid bit */
+	for(int i = 0; i<numProcs; i++){
+		for(int j=0; j<framesPerProc && j<procs[i]->totalMem/pageSize; j++){
+			memory[i*framesPerProc+j] =  ((pageTableList[i])[j])->pageNumber;
+			((pageTableList[i])[j])->valid = 1;
+		}
+	}
+}
 
 int main(int argc, char *argv[]){
 	
@@ -101,10 +120,25 @@ int main(int argc, char *argv[]){
 	
 	/*read in procs from file */
 	readProcs(argv[1]);
-	/* printf("numProcs:%i\n", numProcs);
+	
+	/*make the pageTable List */
+	pageTableList = (Page**)malloc(sizeof(Page*)*numProcs);
 	for(int i = 0; i<numProcs; i++){
-		printf("i=%i, Proc: %i, Mem: %i\n", i,procs[i]->pID, procs[i]->totalMem);
-	} */
+		pageTableList[i] = (Page*)malloc(sizeof(Page)*procs[i]->totalMem/pageSize);
+		for(int j = 0; j<procs[i]->totalMem/pageSize; j++){
+			(pageTableList[i])[j] = (Page)malloc(sizeof(struct page));
+			(pageTableList[i])[j]->pageNumber = pageCounter++;
+			(pageTableList[i])[j]->valid = 0;
+			(pageTableList[i])[j]->accessed = 0;
+		}
+	}
 	
+	/*load resident set*/
+	defaultLoad();
 	
+	for(int i = 0; i<MEMORY_SIZE/pageSize; i++){
+		printf("%i,", memory[i]);
+	}
+	printf("\n");
 }
+
