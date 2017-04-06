@@ -70,7 +70,27 @@ void readProcs(char* fileName){
 
 /* method to read in the process requests from the ptrace file */
 void readFrames(char* fileName){
-  /*implement*/
+  FILE* fp;
+  char str[25]; /* max line size is 25 (10 for first int, 1 for space, 10 for second int, 1 for \0) */
+  int procNum; /* temp storage of a proc id num*/
+  int memSize; /* temp storage of a procs total memory */
+  fp = fopen(fileName, "r"); /* open the file */
+
+  /* read in from file until last line */
+  while(fgets(str, 25, fp) != NULL){
+    if(strlen(str) > 1){ /* ensure no blank lines at end of file are stored */
+      sscanf(str, "%i %i" ,&procNum, &memSize); /* format input string into temp variables */
+      
+      /* create frame */
+      frame f = (frame)malloc(sizeof(struct frameInfo)); /* allocates for a new frame */
+      f->proc = procNum;
+      f->memLoc = memSize;
+
+      /* adds frame to queue */
+      enqueue(f);
+    }
+  }
+  fclose(fp);
 }
 
 /*load initial set into memory*/
