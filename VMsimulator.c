@@ -35,6 +35,10 @@ Process* procs; /*List of processes */
 int* memory;
 int pageCounter = 0;
 
+int numProcsTwo = 0; /* number of processes in ptrace file */
+
+frame* frames; /* List of frames */
+
 /*read in the processes from the process list */
 void readProcs(char* fileName){
 	FILE* fp;
@@ -62,6 +66,11 @@ void readProcs(char* fileName){
 		
 	}
 	fclose(fp);
+}
+
+/* method to read in the process requests from the ptrace file */
+void readFrames(char* fileName){
+  /*implement*/
 }
 
 /*load initial set into memory*/
