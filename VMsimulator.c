@@ -41,6 +41,8 @@ int numProcsTwo = 0; /* number of processes in ptrace file */
 
 frame* frames; /* List of frames */
 
+unsigned long counter=0;
+
 /*read in the processes from the process list */
 void readProcs(char* fileName){
 	FILE* fp;
@@ -119,6 +121,40 @@ void defaultLoad(){
 	}
 }
 
+int inMemory(int id){
+	for(int i = 0; i<MEMORY_SIZE/pageSize; i++){
+		if(memory[i]==id){
+			return 1;
+		}
+	}
+	return 0;
+}
+
+
+void pageReplacement(){
+	while(getNumElements()>0){
+		counter++;
+		frame currFrame = dequeueFirst();
+		int pageId = currFrame->memLoc/pageSize + ((pageTableList[currFrame->proc])[0])->pageNumber;
+		if(! inMemory(pageId)){
+			switch(replacementAlgo){
+				case FIFO:	
+				
+				break;
+				case LRU:
+				break;
+				case CLOCK:
+				break;
+			}
+		}else{
+			((pageTableList[currFrame->proc])[currFrame->memLoc/pageSize])->accessed = counter;
+		}
+	}
+
+}
+
+
+
 int main(int argc, char *argv[]){
 	
 	/*extract args and error check */
@@ -156,6 +192,7 @@ int main(int argc, char *argv[]){
 	
 	/*read in procs from file */
 	readProcs(argv[1]);
+	readFrames(argv[2]);
 	
 	/*make the pageTable List */
 	pageTableList = (Page**)malloc(sizeof(Page*)*numProcs);
@@ -172,9 +209,5 @@ int main(int argc, char *argv[]){
 	/*load resident set*/
 	defaultLoad();
 	
-	for(int i = 0; i<MEMORY_SIZE/pageSize; i++){
-		printf("%i,", memory[i]);
-	}
-	printf("\n");
 }
 
