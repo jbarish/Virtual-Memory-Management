@@ -18,6 +18,11 @@ struct page {
 	int r;
 };typedef struct page* Page;
 
+struct memoryEntry {
+  int id; /* id for each entry */
+  int proc; /* which proc it comes from */
+};typedef struct memoryEntry* MemEntry;
+
 /*store information for each process */
 struct process {
 	int pID; /*id of the process */
@@ -34,7 +39,7 @@ int numProcs=0; /*umber of proccess in process list */
 
 Page** pageTableList; /*List of page tables*/
 Process* procs; /*List of processes */
-int* memory;
+MemEntry* memory;
 int pageCounter = 0;
 
 int numProcsTwo = 0; /* number of processes in ptrace file */
@@ -97,37 +102,69 @@ void readFrames(char* fileName){
   fclose(fp);
 }
 
-
+MemEntry makeMemoryEntry(int id, int proc){
+  MemEntry mem = malloc(sizeof(struct memoryEntry));
+  mem->id = id;
+  mem->proc = proc;
+  Page temp = ((pageTableList[proc])[id]);
+  temp->valid = 1;
+  temp->added = counter;
+  temp->accessed = counter;
+  temp->r = 1;
+  return mem;
+}
 
 /*load initial set into memory*/
 void defaultLoad(){
 	int framesPerProc = (MEMORY_SIZE/pageSize)/numProcs;
-	memory = (int*)malloc(sizeof(MEMORY_SIZE/pageSize));
-	
+	memory = (MemEntry*)malloc(sizeof(MemEntry) * MEMORY_SIZE/pageSize);
 	/*initalize all memory frames to -1 */
 	for(int i = 0; i<MEMORY_SIZE/pageSize; i++){
-		memory[i] = -1;
+	  memory[i] = NULL;
 	}
 	
 	/*add pages to memory, and set valid bit */
 	for(int i = 0; i<numProcs; i++){
-		for(int j=0; j<framesPerProc && j<procs[i]->totalMem/pageSize; j++){
-			memory[i*framesPerProc+j] =  ((pageTableList[i])[j])->pageNumber;
-			((pageTableList[i])[j])->valid = 1;
-			((pageTableList[i])[j])->accessed = 0;
-			((pageTableList[i])[j])->added = 0;
-			((pageTableList[i])[j])->r = 0;
-		}
+	  for(int j=0; j<framesPerProc && j<procs[i]->totalMem/pageSize; j++){
+	    memory[i*framesPerProc+j] = malloc(sizeof(struct memoryEntry));
+	    /*memory[i*framesPerProc+j]->id =  ((pageTableList[i])[j])->pageNumber;
+	    memory[i*framesPerProc+j]->proc =  i;
+	    ((pageTableList[i])[j])->valid = 1;
+	    ((pageTableList[i])[j])->accessed = 0;
+	    ((pageTableList[i])[j])->added = 0;
+	    ((pageTableList[i])[j])->r = 0;*/
+	    memory[i*framesPerProc+j] = makeMemoryEntry(((pageTableList[i])[j])->pageNumber, i);
+	  }
 	}
 }
 
 int inMemory(int id){
 	for(int i = 0; i<MEMORY_SIZE/pageSize; i++){
-		if(memory[i]==id){
+		if(memory[i]->id==id){
 			return 1;
 		}
 	}
 	return 0;
+}
+
+
+
+int repFIFO(MemEntry id){
+  Page smallestPage = NULL;
+  int smallestId = -1;
+  unsigned long smallest = ULLONG_MAX;
+  for(int i = 0; i<MEMORY_SIZE/pageSize; i++){
+    Page temp = ((pageTableList[memory[i]->proc])[memory[i]->id/pageSize]);
+    if(temp->added < smallest){
+      smallest = temp->added;
+      smallestPage = temp;
+      smallestId = i;
+    }
+  }
+  free(memory[smallestId]);
+  memory[smallestId] = id;
+  smallestPage->valid = 0;
+  return 0;
 }
 
 
@@ -139,7 +176,8 @@ void pageReplacement(){
 		if(! inMemory(pageId)){
 			switch(replacementAlgo){
 				case FIFO:	
-				
+				  repFIFO(makeMemoryEntry(pageId, currFrame->proc));
+				  
 				break;
 				case LRU:
 				break;
