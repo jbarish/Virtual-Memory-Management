@@ -39,14 +39,13 @@ int numProcs=0; /*umber of proccess in process list */
 
 Page** pageTableList; /*List of page tables*/
 Process* procs; /*List of processes */
-MemEntry* memory;
-int pageCounter = 0;
+MemEntry* memory; /*Our Main Memory */
 
+int pageCounter = 0; 
 int numProcsTwo = 0; /* number of processes in ptrace file */
 
-frame* frames; /* List of frames */
-
 unsigned long counter=0;
+int memorySlots = MEMORY_SIZE;
 
 /*read in the processes from the process list */
 void readProcs(char* fileName){
@@ -106,7 +105,7 @@ MemEntry makeMemoryEntry(int id, int proc){
   MemEntry mem = malloc(sizeof(struct memoryEntry));
   mem->id = id;
   mem->proc = proc;
-  Page temp = ((pageTableList[proc])[id]);
+  Page temp = ((pageTableList[proc])[id-((pageTableList[proc])[0])->pageNumber]);
   temp->valid = 1;
   temp->added = counter;
   temp->accessed = counter;
@@ -116,16 +115,19 @@ MemEntry makeMemoryEntry(int id, int proc){
 
 /*load initial set into memory*/
 void defaultLoad(){
-	int framesPerProc = (MEMORY_SIZE/pageSize)/numProcs;
-	memory = (MemEntry*)malloc(sizeof(MemEntry) * MEMORY_SIZE/pageSize);
+	memorySlots = MEMORY_SIZE/pageSize;
+	int framesPerProc = memorySlots/numProcs;
+	
+	memory = (MemEntry*)malloc(sizeof(MemEntry) * memorySlots);
 	/*initalize all memory frames to -1 */
-	for(int i = 0; i<MEMORY_SIZE/pageSize; i++){
+	for(int i = 0; i<memorySlots; i++){
 	  memory[i] = NULL;
 	}
-	
+	int i;
+	int j;
 	/*add pages to memory, and set valid bit */
-	for(int i = 0; i<numProcs; i++){
-	  for(int j=0; j<framesPerProc && j<procs[i]->totalMem/pageSize; j++){
+	for( i= 0; i<numProcs; i++){
+	  for(j=0; j<framesPerProc && j<procs[i]->totalMem/pageSize; j++){
 	    memory[i*framesPerProc+j] = malloc(sizeof(struct memoryEntry));
 	    /*memory[i*framesPerProc+j]->id =  ((pageTableList[i])[j])->pageNumber;
 	    memory[i*framesPerProc+j]->proc =  i;
@@ -136,10 +138,12 @@ void defaultLoad(){
 	    memory[i*framesPerProc+j] = makeMemoryEntry(((pageTableList[i])[j])->pageNumber, i);
 	  }
 	}
+	memorySlots = (i-1)*framesPerProc+j; /*shrink memory if there are extra NULLS at end due to rounding*/
 }
 
 int inMemory(int id){
-	for(int i = 0; i<MEMORY_SIZE/pageSize; i++){
+	for(int i = 0; i<memorySlots; i++){
+		//printf("%i\n", i);
 		if(memory[i]->id==id){
 			return 1;
 		}
@@ -153,9 +157,10 @@ int repFIFO(MemEntry id){
   Page smallestPage = NULL;
   int smallestId = -1;
   unsigned long smallest = ULLONG_MAX;
-  for(int i = 0; i<MEMORY_SIZE/pageSize; i++){
-    Page temp = ((pageTableList[memory[i]->proc])[memory[i]->id/pageSize]);
-    if(temp->added < smallest){
+  for(int i = 0; i<memorySlots; i++){
+    Page temp = ((pageTableList[memory[i]->proc])[memory[i]->id-
+		((pageTableList[memory[i]->proc])[0])->pageNumber]);
+    if(temp->added < smallest && memory[i]->proc == id->proc){
       smallest = temp->added;
       smallestPage = temp;
       smallestId = i;
@@ -172,7 +177,8 @@ void pageReplacement(){
 	while(getNumElements()>0){
 		counter++;
 		frame currFrame = dequeueFirst();
-		int pageId = currFrame->memLoc/pageSize + ((pageTableList[currFrame->proc])[0])->pageNumber;
+		double temp = (double)currFrame->memLoc/(double)pageSize;
+		int pageId = (int)ceil(temp) + ((pageTableList[currFrame->proc])[0])->pageNumber -1;
 		if(! inMemory(pageId)){
 			switch(replacementAlgo){
 				case FIFO:	
@@ -185,7 +191,7 @@ void pageReplacement(){
 				break;
 			}
 		}else{
-			((pageTableList[currFrame->proc])[currFrame->memLoc/pageSize])->accessed = counter;
+			((pageTableList[currFrame->proc])[(int)ceil(temp)-1])->accessed = counter;
 		}
 	}
 
@@ -236,7 +242,7 @@ int main(int argc, char *argv[]){
 	pageTableList = (Page**)malloc(sizeof(Page*)*numProcs);
 	for(int i = 0; i<numProcs; i++){
 		pageTableList[i] = (Page*)malloc(sizeof(Page)*procs[i]->totalMem/pageSize);
-		for(int j = 0; j<procs[i]->totalMem/pageSize; j++){
+		for(int j = 0; j<(ceil(procs[i]->totalMem/(double)pageSize)); j++){
 			(pageTableList[i])[j] = (Page)malloc(sizeof(struct page));
 			(pageTableList[i])[j]->pageNumber = pageCounter++;
 			(pageTableList[i])[j]->valid = 0;
@@ -246,6 +252,6 @@ int main(int argc, char *argv[]){
 	
 	/*load resident set*/
 	defaultLoad();
-	
+	pageReplacement();
 }
 

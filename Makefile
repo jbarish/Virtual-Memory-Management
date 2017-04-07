@@ -11,11 +11,11 @@ OBJ=$(addprefix $(SRCPATH), $(SRC:.c=.o))
 CC=gcc
 RM=rm -f
 INCPATH=includes
-CFLAGS+= -I $(INCPATH) -std=c99 -g
-
+CFLAGS+= -I $(INCPATH) -std=c99 -g -lm
+LFLAGS=-lm
 
 all: $(OBJ)
-	gcc $(OBJ) -o $(NAME) 
+	gcc $(OBJ) -o $(NAME) $(LFLAGS)
 
 clean:
 	-$(RM) *~

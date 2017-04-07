@@ -5,7 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <limits.h>
-
+#include <math.h>
 struct frameInfo{
 	int proc;
 	int memLoc;
