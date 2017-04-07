@@ -14,6 +14,8 @@ struct page {
 	int pageNumber; /*unique page number */
 	int valid; /*whether page is in memory*/
 	unsigned long accessed; /*time accessed */
+	unsigned long added;
+	int r;
 };typedef struct page* Page;
 
 /*store information for each process */
@@ -93,6 +95,8 @@ void readFrames(char* fileName){
   fclose(fp);
 }
 
+
+
 /*load initial set into memory*/
 void defaultLoad(){
 	int framesPerProc = (MEMORY_SIZE/pageSize)/numProcs;
@@ -108,6 +112,9 @@ void defaultLoad(){
 		for(int j=0; j<framesPerProc && j<procs[i]->totalMem/pageSize; j++){
 			memory[i*framesPerProc+j] =  ((pageTableList[i])[j])->pageNumber;
 			((pageTableList[i])[j])->valid = 1;
+			((pageTableList[i])[j])->accessed = 0;
+			((pageTableList[i])[j])->added = 0;
+			((pageTableList[i])[j])->r = 0;
 		}
 	}
 }
