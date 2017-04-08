@@ -154,6 +154,7 @@ void defaultLoad(){
 	memorySlots = (i-1)*framesPerProc+j; /*shrink memory if there are extra NULLS at end due to rounding*/
 }
 
+
 int inMemory(int id){
 	for(int i = 0; i<memorySlots; i++){
 		//printf("%i\n", i);
@@ -162,6 +163,23 @@ int inMemory(int id){
 		}
 	}
 	return 0;
+}
+
+int findNextCont(int id, int proc){
+  int relId = id - ((pageTableList[proc])[0])->pageNumber;
+  int cnt = 0;
+  for(int i = relId + 1; i <(int)ceil(procs[proc]->totalMem/(double)pageSize)-1; i++,cnt++){
+    if(!inMemory(id+cnt)){
+      return id+cnt;
+    }
+  }
+  cnt = 0;
+  for(int j = 0; j < relId; j++,cnt++){
+    if(!inMemory(cnt)){
+      return cnt+((pageTableList[proc])[0])->pageNumber;
+    }
+  }
+  return -1;
 }
 
 int repLRU(MemEntry id){
@@ -226,9 +244,17 @@ void pageReplacement(){
 			//printf("Doing Page Replacement...");
 			//sleep(1);
 			switch(replacementAlgo){
-				case FIFO:	
-				  repFIFO(makeMemoryEntry(pageId, currFrame->proc));
-				break;
+				case FIFO:
+				  if(!prePage){
+				    repFIFO(makeMemoryEntry(pageId, currFrame->proc));
+				  }else{
+				    repFIFO(makeMemoryEntry(pageId, currFrame->proc));
+				    int tempPageId = findNextCont(pageId, currFrame->proc);
+				    if(tempPageId > 0){
+				      repFIFO(makeMemoryEntry(tempPageId, currFrame->proc));
+				    }
+				  }
+				  break;
 				case LRU:
 				  repLRU(makeMemoryEntry(pageId, currFrame->proc));
 				break;
