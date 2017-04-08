@@ -46,6 +46,19 @@ int numProcsTwo = 0; /* number of processes in ptrace file */
 
 unsigned long counter=0;
 int memorySlots = MEMORY_SIZE;
+unsigned long pageFaultCounter=0;
+
+
+/*forward declarations*/
+void readProcs(char* fileName);
+void readFrames(char* fileName);
+MemEntry makeMemoryEntry(int id, int proc);
+void defaultLoad();
+int inMemory(int id);
+int repFIFO(MemEntry id);
+void pageReplacement();
+void printMemory();
+
 
 /*read in the processes from the process list */
 void readProcs(char* fileName){
@@ -166,6 +179,8 @@ int repFIFO(MemEntry id){
       smallestId = i;
     }
   }
+ // printf("...Replaceing page %i...", memory[smallestId]->id);
+  //fflush(stdout);
   free(memory[smallestId]);
   memory[smallestId] = id;
   smallestPage->valid = 0;
@@ -174,12 +189,23 @@ int repFIFO(MemEntry id){
 
 
 void pageReplacement(){
+	//printf("Initial Memory:\n");
+	//printMemory();
+	//sleep(2);
 	while(getNumElements()>0){
 		counter++;
 		frame currFrame = dequeueFirst();
+		
 		double temp = (double)currFrame->memLoc/(double)pageSize;
 		int pageId = (int)ceil(temp) + ((pageTableList[currFrame->proc])[0])->pageNumber -1;
+		//printf("Frame: Proc %i, Mem %i, Relative mem: %i, Absolute Page: %i  ", 
+		//	currFrame->proc, currFrame->memLoc, (int)ceil(temp), pageId);
+		//	fflush(stdout);
+		//sleep(1);
 		if(! inMemory(pageId)){
+			pageFaultCounter++;
+			//printf("Doing Page Replacement...");
+			//sleep(1);
 			switch(replacementAlgo){
 				case FIFO:	
 				  repFIFO(makeMemoryEntry(pageId, currFrame->proc));
@@ -192,9 +218,34 @@ void pageReplacement(){
 			}
 		}else{
 			((pageTableList[currFrame->proc])[(int)ceil(temp)-1])->accessed = counter;
+			//printf("...Page already in memory...");
+			//sleep(1);
 		}
+		//printf("\n");
+		//printMemory();
+		//getchar();
 	}
 
+}
+
+void printMemory(){
+	for(int i = 0; i<memorySlots; i++){
+		//printf("----------------\n");
+		printf("PID:%i,", memory[i]->id);
+		printf("P:%i,", memory[i]->proc);
+		int relID =memory[i]->id-((pageTableList[ memory[i]->proc])[0])->pageNumber;
+		Page temp = ((pageTableList[ memory[i]->proc])[relID]);
+		printf("RID:%i,", relID);
+		printf("V:%i,R:%i,", temp->valid, temp->r);
+		printf("AD:%lu,", temp->added);
+		printf("AC:%lu,",temp->accessed);	
+		if(i%5 ==0){
+			printf("\n");
+		}else{
+			printf("\t| ");
+		}
+	}
+	printf("\n");
 }
 
 
@@ -253,5 +304,6 @@ int main(int argc, char *argv[]){
 	/*load resident set*/
 	defaultLoad();
 	pageReplacement();
+	printf("Page Faults:%ul\n",pageFaultCounter);
 }
 
