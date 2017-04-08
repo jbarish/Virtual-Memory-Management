@@ -164,7 +164,26 @@ int inMemory(int id){
 	return 0;
 }
 
-
+int repLRU(MemEntry id){
+  Page smallestPage = NULL;
+  int smallestId = -1;
+  unsigned long smallest = ULLONG_MAX;
+  for(int i = 0; i<memorySlots; i++){
+    Page temp = ((pageTableList[memory[i]->proc])[memory[i]->id-
+		((pageTableList[memory[i]->proc])[0])->pageNumber]);
+    if(temp->accessed < smallest && memory[i]->proc == id->proc){
+      smallest = temp->accessed;
+      smallestPage = temp;
+      smallestId = i;
+    }
+  }
+ // printf("...Replaceing page %i...", memory[smallestId]->id);
+  //fflush(stdout);
+  free(memory[smallestId]);
+  memory[smallestId] = id;
+  smallestPage->valid = 0;
+  return 0; 
+}
 
 int repFIFO(MemEntry id){
   Page smallestPage = NULL;
@@ -209,9 +228,9 @@ void pageReplacement(){
 			switch(replacementAlgo){
 				case FIFO:	
 				  repFIFO(makeMemoryEntry(pageId, currFrame->proc));
-				  
 				break;
 				case LRU:
+				  repLRU(makeMemoryEntry(pageId, currFrame->proc));
 				break;
 				case CLOCK:
 				break;
@@ -304,6 +323,6 @@ int main(int argc, char *argv[]){
 	/*load resident set*/
 	defaultLoad();
 	pageReplacement();
-	printf("Page Faults:%ul\n",pageFaultCounter);
+	printf("Page Faults:%lu\n",pageFaultCounter);
 }
 

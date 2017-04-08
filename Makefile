@@ -37,5 +37,5 @@ fclean: clean
 re: fclean all
 
 run:
-	./VMsimulator plist.txt ptrace.txt 2 FIFO +
+	./VMsimulator plist.txt ptrace.txt 2 LRU +
 
