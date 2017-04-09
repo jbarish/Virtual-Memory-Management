@@ -150,14 +150,15 @@ void defaultLoad(){
 	int j=0;
 	/*add pages to memory, and set valid bit */
 	for( i= 0; i<numProcs; i++){
-		clockList[i]= malloc(sizeof(struct clockInfo));
-		clockList[i]->minMemSlot = i*framesPerProc+j;
-		
+	  j=0;
+	  clockList[i]= malloc(sizeof(struct clockInfo));
+	  clockList[i]->minMemSlot = i*framesPerProc+j;
+	  
 	  for(j=0; j<framesPerProc && j<(int)ceil(procs[i]->totalMem/(double)pageSize); j++){
 	    memory[i*framesPerProc+j] = makeMemoryEntry(((pageTableList[i])[j])->pageNumber, i);
 	  }
-	  clockList[i]->maxMemSlot = i*framesPerProc+j;
-	  clockList[i]->currMemLoc = i*framesPerProc+j;
+	  clockList[i]->maxMemSlot = i*framesPerProc+j-1;
+	  clockList[i]->currMemLoc = i*framesPerProc+j-1;
 	}
 	memorySlots = (i-1)*framesPerProc+j; /*shrink memory if there are extra NULLS at end due to rounding*/
 }
@@ -232,8 +233,27 @@ int repFIFO(MemEntry id){
 }
 
 int repClock(MemEntry id){
-	ClockInfo procClock = clockList[id->proc];
-	
+  ClockInfo procClock = clockList[id->proc];
+  while(1){
+    if(procClock->currMemLoc < procClock->maxMemSlot){
+      procClock->currMemLoc++;
+    }
+    else{
+      procClock->currMemLoc = procClock->minMemSlot;
+    }
+    Page temp = ((pageTableList[memory[procClock->currMemLoc]->proc])[memory[procClock->currMemLoc]->id-
+		((pageTableList[memory[procClock->currMemLoc]->proc])[0])->pageNumber]);
+    if(temp->r == 0){
+       free(memory[procClock->currMemLoc]);
+       memory[procClock->currMemLoc] = id;
+       temp->valid = 0;
+       break;
+    }
+    if(temp->r == 1){
+      temp->r = 0;
+    }
+  }
+  return 0;
 }
 
 
@@ -256,33 +276,43 @@ void pageReplacement(){
 			//printf("Doing Page Replacement...");
 			//sleep(1);
 			switch(replacementAlgo){
-				case FIFO:
-				  if(!prePage){
-				    repFIFO(makeMemoryEntry(pageId, currFrame->proc));
-				  }else{
-				    repFIFO(makeMemoryEntry(pageId, currFrame->proc));
-				    int tempPageId = findNextCont(pageId, currFrame->proc);
-				    if(tempPageId > 0){
-				      repFIFO(makeMemoryEntry(tempPageId, currFrame->proc));
-				    }
-				  }
-				  break;
-				case LRU:
-				if(!prePage){
-					repLRU(makeMemoryEntry(pageId, currFrame->proc));
-				}else{
-					repLRU(makeMemoryEntry(pageId, currFrame->proc));
-					int tempPageId = findNextCont(pageId, currFrame->proc);
-					if(tempPageId > 0){
-					  repLRU(makeMemoryEntry(tempPageId, currFrame->proc));
-					}
-				}
-				break;
-				case CLOCK:
-				break;
+			case FIFO:
+			  if(!prePage){
+			    repFIFO(makeMemoryEntry(pageId, currFrame->proc));
+			  }else{
+			    repFIFO(makeMemoryEntry(pageId, currFrame->proc));
+			    int tempPageId = findNextCont(pageId, currFrame->proc);
+			    if(tempPageId > 0){
+			      repFIFO(makeMemoryEntry(tempPageId, currFrame->proc));
+			    }
+			  }
+			  break;
+			case LRU:
+			  if(!prePage){
+			    repLRU(makeMemoryEntry(pageId, currFrame->proc));
+			  }else{
+			    repLRU(makeMemoryEntry(pageId, currFrame->proc));
+			    int tempPageId = findNextCont(pageId, currFrame->proc);
+			    if(tempPageId > 0){
+			      repLRU(makeMemoryEntry(tempPageId, currFrame->proc));
+			    }
+			  }
+			  break;
+			case CLOCK:
+			  if(!prePage){
+			    repClock(makeMemoryEntry(pageId, currFrame->proc));
+			  }else{
+			    repClock(makeMemoryEntry(pageId, currFrame->proc));
+			    int tempPageId = findNextCont(pageId, currFrame->proc);
+			    if(tempPageId > 0){
+			      repClock(makeMemoryEntry(tempPageId, currFrame->proc));
+			    }
+			  }
+			  break;
 			}
 		}else{
 			((pageTableList[currFrame->proc])[(int)ceil(temp)-1])->accessed = counter;
+			((pageTableList[currFrame->proc])[(int)ceil(temp)-1])->r = 1;
 			//printf("...Page already in memory...");
 			//sleep(1);
 		}
