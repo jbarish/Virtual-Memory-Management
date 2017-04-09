@@ -29,6 +29,12 @@ struct process {
 	int totalMem; /*memory the process needs */
 };typedef struct process* Process;
 
+struct clockInfo{
+	int minMemSlot;
+	int maxMemSlot;
+	int currMemLoc;
+};typedef struct clockInfo* ClockInfo;
+
 typedef enum {FIFO, LRU, CLOCK} replacementAlgoType; /*data type for replacement algo type */
 
 replacementAlgoType replacementAlgo; /*given as arg*/
@@ -40,6 +46,7 @@ int numProcs=0; /*umber of proccess in process list */
 Page** pageTableList; /*List of page tables*/
 Process* procs; /*List of processes */
 MemEntry* memory; /*Our Main Memory */
+ClockInfo* clockList;
 
 int pageCounter = 0; 
 int numProcsTwo = 0; /* number of processes in ptrace file */
@@ -128,28 +135,29 @@ MemEntry makeMemoryEntry(int id, int proc){
 
 /*load initial set into memory*/
 void defaultLoad(){
+	
+	
 	memorySlots = MEMORY_SIZE/pageSize;
 	int framesPerProc = memorySlots/numProcs;
 	
 	memory = (MemEntry*)malloc(sizeof(MemEntry) * memorySlots);
+	clockList = malloc(sizeof(ClockInfo)*numProcs);
 	/*initalize all memory frames to -1 */
 	for(int i = 0; i<memorySlots; i++){
 	  memory[i] = NULL;
 	}
 	int i;
-	int j;
+	int j=0;
 	/*add pages to memory, and set valid bit */
 	for( i= 0; i<numProcs; i++){
-	  for(j=0; j<framesPerProc && j<procs[i]->totalMem/pageSize; j++){
-	    memory[i*framesPerProc+j] = malloc(sizeof(struct memoryEntry));
-	    /*memory[i*framesPerProc+j]->id =  ((pageTableList[i])[j])->pageNumber;
-	    memory[i*framesPerProc+j]->proc =  i;
-	    ((pageTableList[i])[j])->valid = 1;
-	    ((pageTableList[i])[j])->accessed = 0;
-	    ((pageTableList[i])[j])->added = 0;
-	    ((pageTableList[i])[j])->r = 0;*/
+		clockList[i]= malloc(sizeof(struct clockInfo));
+		clockList[i]->minMemSlot = i*framesPerProc+j;
+		
+	  for(j=0; j<framesPerProc && j<(int)ceil(procs[i]->totalMem/(double)pageSize); j++){
 	    memory[i*framesPerProc+j] = makeMemoryEntry(((pageTableList[i])[j])->pageNumber, i);
 	  }
+	  clockList[i]->maxMemSlot = i*framesPerProc+j;
+	  clockList[i]->currMemLoc = i*framesPerProc+j;
 	}
 	memorySlots = (i-1)*framesPerProc+j; /*shrink memory if there are extra NULLS at end due to rounding*/
 }
@@ -157,7 +165,6 @@ void defaultLoad(){
 
 int inMemory(int id){
 	for(int i = 0; i<memorySlots; i++){
-		//printf("%i\n", i);
 		if(memory[i]->id==id){
 			return 1;
 		}
@@ -224,6 +231,11 @@ int repFIFO(MemEntry id){
   return 0;
 }
 
+int repClock(MemEntry id){
+	ClockInfo procClock = clockList[id->proc];
+	
+}
+
 
 void pageReplacement(){
 	//printf("Initial Memory:\n");
@@ -256,7 +268,15 @@ void pageReplacement(){
 				  }
 				  break;
 				case LRU:
-				  repLRU(makeMemoryEntry(pageId, currFrame->proc));
+				if(!prePage){
+					repLRU(makeMemoryEntry(pageId, currFrame->proc));
+				}else{
+					repLRU(makeMemoryEntry(pageId, currFrame->proc));
+					int tempPageId = findNextCont(pageId, currFrame->proc);
+					if(tempPageId > 0){
+					  repLRU(makeMemoryEntry(tempPageId, currFrame->proc));
+					}
+				}
 				break;
 				case CLOCK:
 				break;
@@ -284,7 +304,7 @@ void printMemory(){
 		printf("V:%i,R:%i,", temp->valid, temp->r);
 		printf("AD:%lu,", temp->added);
 		printf("AC:%lu,",temp->accessed);	
-		if(i%5 ==0){
+		if((i+1)%5 ==0){
 			printf("\n");
 		}else{
 			printf("\t| ");
