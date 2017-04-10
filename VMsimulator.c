@@ -1,5 +1,5 @@
 #include "VMsimulator.h"
-
+//#define TEST
 #define MEMORY_SIZE 512
 
 /*
@@ -29,6 +29,7 @@ struct process {
 	int totalMem; /*memory the process needs */
 };typedef struct process* Process;
 
+/*store information about each proccess's clock hand state */
 struct clockInfo{
 	int minMemSlot;
 	int maxMemSlot;
@@ -38,22 +39,22 @@ struct clockInfo{
 typedef enum {FIFO, LRU, CLOCK} replacementAlgoType; /*data type for replacement algo type */
 
 replacementAlgoType replacementAlgo; /*given as arg*/
-int prePage; /*1 if use prepage, 0 if not, given as arg */
-int pageSize; /*size of pages, given as arg */
+int prePage; 	/*1 if use prepage, 0 if not, given as arg */
+int pageSize; 	/*size of pages, given as arg */
 
 int numProcs=0; /*umber of proccess in process list */
 
-Page** pageTableList; /*List of page tables*/
-Process* procs; /*List of processes */
-MemEntry* memory; /*Our Main Memory */
-ClockInfo* clockList;
+Page** pageTableList; 	/*List of page tables*/
+Process* procs; 		/*List of processes */
+MemEntry* memory; 		/*Our Main Memory */
+ClockInfo* clockList; 	/*list of process's clocks for clock*/
 
-int pageCounter = 0; 
-int numProcsTwo = 0; /* number of processes in ptrace file */
+int pageCounter = 0; 	/* used for creating page ids */
+int numProcsTwo = 0; 	/* number of processes in ptrace file */
 
-unsigned long counter=0;
-int memorySlots = MEMORY_SIZE;
-unsigned long pageFaultCounter=0;
+unsigned long counter=0; 			/* running counter as 'clock' ticks */
+int memorySlots = MEMORY_SIZE; 		/* number of slots in memory */
+unsigned long pageFaultCounter=0; 	/*number of page faults that occur */
 
 
 /*forward declarations*/
@@ -203,8 +204,10 @@ int repLRU(MemEntry id){
       smallestId = i;
     }
   }
- // printf("...Replaceing page %i...", memory[smallestId]->id);
-  //fflush(stdout);
+  #ifdef TEST
+  printf("...Replacing page %i...", memory[smallestId]->id);
+  fflush(stdout);
+  #endif
   free(memory[smallestId]);
   memory[smallestId] = id;
   smallestPage->valid = 0;
@@ -224,8 +227,10 @@ int repFIFO(MemEntry id){
       smallestId = i;
     }
   }
- // printf("...Replaceing page %i...", memory[smallestId]->id);
-  //fflush(stdout);
+	#ifdef TEST
+	printf("...Replacing page %i...", memory[smallestId]->id);
+	fflush(stdout);
+	#endif
   free(memory[smallestId]);
   memory[smallestId] = id;
   smallestPage->valid = 0;
@@ -244,9 +249,14 @@ int repClock(MemEntry id){
     Page temp = ((pageTableList[memory[procClock->currMemLoc]->proc])[memory[procClock->currMemLoc]->id-
 		((pageTableList[memory[procClock->currMemLoc]->proc])[0])->pageNumber]);
     if(temp->r == 0){
-       free(memory[procClock->currMemLoc]);
-       memory[procClock->currMemLoc] = id;
-       temp->valid = 0;
+		
+		#ifdef TEST
+		printf("...Replacing page %i...", memory[procClock->currMemLoc]->id);
+		fflush(stdout);
+		#endif
+		free(memory[procClock->currMemLoc]);
+		memory[procClock->currMemLoc] = id;
+		temp->valid = 0;
        break;
     }
     if(temp->r == 1){
@@ -258,23 +268,28 @@ int repClock(MemEntry id){
 
 
 void pageReplacement(){
-	//printf("Initial Memory:\n");
-	//printMemory();
-	//sleep(2);
+	#ifdef TEST
+	printf("Initial Memory:\n");
+	printMemory();
+	#endif
+	
 	while(getNumElements()>0){
 		counter++;
 		frame currFrame = dequeueFirst();
 		
 		double temp = (double)currFrame->memLoc/(double)pageSize;
 		int pageId = (int)ceil(temp) + ((pageTableList[currFrame->proc])[0])->pageNumber -1;
-		//printf("Frame: Proc %i, Mem %i, Relative mem: %i, Absolute Page: %i  ", 
-		//	currFrame->proc, currFrame->memLoc, (int)ceil(temp), pageId);
-		//	fflush(stdout);
-		//sleep(1);
-		if(! inMemory(pageId)){
+		
+		#ifdef TEST
+		printf("Frame: Proc %i, Mem %i, Relative mem: %i, Absolute Page: %i  ", 
+			currFrame->proc, currFrame->memLoc, (int)ceil(temp), pageId);
+		fflush(stdout);
+		#endif
+		if(!inMemory(pageId)){
 			pageFaultCounter++;
-			//printf("Doing Page Replacement...");
-			//sleep(1);
+			#ifdef TEST
+			printf("Doing Page Replacement...");
+			#endif
 			switch(replacementAlgo){
 			case FIFO:
 			  if(!prePage){
@@ -313,12 +328,15 @@ void pageReplacement(){
 		}else{
 			((pageTableList[currFrame->proc])[(int)ceil(temp)-1])->accessed = counter;
 			((pageTableList[currFrame->proc])[(int)ceil(temp)-1])->r = 1;
-			//printf("...Page already in memory...");
-			//sleep(1);
+			#ifdef TEST
+			printf("...Page already in memory...");
+			#endif
 		}
-		//printf("\n");
-		//printMemory();
-		//getchar();
+		#ifdef TEST
+		printf("\n");
+		printMemory();
+		getchar();
+		#endif
 	}
 
 }
