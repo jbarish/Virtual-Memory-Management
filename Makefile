@@ -55,6 +55,12 @@ run:
 	./VMsimulator plist.txt ptrace.txt 4 FIFO +
 	./VMsimulator plist.txt ptrace.txt 4 LRU + 
 	./VMsimulator plist.txt ptrace.txt 4 Clock +
+	./VMsimulator plist.txt ptrace.txt 8 FIFO -
+	./VMsimulator plist.txt ptrace.txt 8 LRU -
+	./VMsimulator plist.txt ptrace.txt 8 Clock -
+	./VMsimulator plist.txt ptrace.txt 8 FIFO +
+	./VMsimulator plist.txt ptrace.txt 8 LRU + 
+	./VMsimulator plist.txt ptrace.txt 8 Clock +
 	./VMsimulator plist.txt ptrace.txt 16 FIFO -
 	./VMsimulator plist.txt ptrace.txt 16 LRU -
 	./VMsimulator plist.txt ptrace.txt 16 Clock -
