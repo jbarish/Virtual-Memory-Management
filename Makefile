@@ -37,6 +37,12 @@ fclean: clean
 re: fclean all
 
 run:
+	./VMsimulator plist.txt ptrace.txt 1 FIFO -
+	./VMsimulator plist.txt ptrace.txt 1 LRU -
+	./VMsimulator plist.txt ptrace.txt 1 Clock -
+	./VMsimulator plist.txt ptrace.txt 1 FIFO +
+	./VMsimulator plist.txt ptrace.txt 1 LRU + 
+	./VMsimulator plist.txt ptrace.txt 1 Clock +
 	./VMsimulator plist.txt ptrace.txt 2 FIFO -
 	./VMsimulator plist.txt ptrace.txt 2 LRU -
 	./VMsimulator plist.txt ptrace.txt 2 Clock -
@@ -55,9 +61,4 @@ run:
 	./VMsimulator plist.txt ptrace.txt 16 FIFO +
 	./VMsimulator plist.txt ptrace.txt 16 LRU + 
 	./VMsimulator plist.txt ptrace.txt 16 Clock +
-	./VMsimulator plist.txt ptrace.txt 32 FIFO -
-	./VMsimulator plist.txt ptrace.txt 32 LRU -
-	./VMsimulator plist.txt ptrace.txt 32 Clock -
-	./VMsimulator plist.txt ptrace.txt 32 FIFO +
-	./VMsimulator plist.txt ptrace.txt 32 LRU + 
-	./VMsimulator plist.txt ptrace.txt 32 Clock +
+
