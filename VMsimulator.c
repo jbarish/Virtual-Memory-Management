@@ -1,5 +1,5 @@
 #include "VMsimulator.h"
-//#define TEST
+//#define TEST /*will put in debug mode, printing out all steps */
 #define MEMORY_SIZE 512
 
 /*
@@ -122,6 +122,9 @@ void readFrames(char* fileName){
   fclose(fp);
 }
 
+/*Makes a memory entry to add to memory
+ *Also, for the page to be added in memory, sets its counter, r, valid, and accessed bits
+ */
 MemEntry makeMemoryEntry(int id, int proc){
   MemEntry mem = malloc(sizeof(struct memoryEntry));
   mem->id = id;
@@ -164,7 +167,7 @@ void defaultLoad(){
 	memorySlots = (i-1)*framesPerProc+j; /*shrink memory if there are extra NULLS at end due to rounding*/
 }
 
-
+/*check if a given page id is in memory*/
 int inMemory(int id){
 	for(int i = 0; i<memorySlots; i++){
 		if(memory[i]->id==id){
@@ -174,6 +177,10 @@ int inMemory(int id){
 	return 0;
 }
 
+/*find the next contiguous page for a given page id and proc
+ *cheks all pages, and returns -1 if all pages are in memory.
+ *Else returns a contiguous page id
+ */
 int findNextCont(int id, int proc){
   int relId = id - ((pageTableList[proc])[0])->pageNumber;
   int cnt = 0;
@@ -191,6 +198,7 @@ int findNextCont(int id, int proc){
   return -1;
 }
 
+/*page replacement for LRU, uses accessed bit*/
 int repLRU(MemEntry id){
   Page smallestPage = NULL;
   int smallestId = -1;
@@ -214,6 +222,7 @@ int repLRU(MemEntry id){
   return 0; 
 }
 
+/*page replacement for FIFO, uses added bit*/
 int repFIFO(MemEntry id){
   Page smallestPage = NULL;
   int smallestId = -1;
@@ -237,6 +246,7 @@ int repFIFO(MemEntry id){
   return 0;
 }
 
+/*page replacement for Clock, uses r bit */
 int repClock(MemEntry id){
   ClockInfo procClock = clockList[id->proc];
   while(1){
@@ -266,13 +276,14 @@ int repClock(MemEntry id){
   return 0;
 }
 
-
+/*run the program, doing page replacements when neccessary */
 void pageReplacement(){
 	#ifdef TEST
 	printf("Initial Memory:\n");
 	printMemory();
 	#endif
-	
+
+	/*while there are still frames to process, process them*/
 	while(getNumElements()>0){
 		counter++;
 		frame currFrame = dequeueFirst();
@@ -285,6 +296,8 @@ void pageReplacement(){
 			currFrame->proc, currFrame->memLoc, (int)ceil(temp), pageId);
 		fflush(stdout);
 		#endif
+
+		/*if the page is not in memory, perform appropriate page replacement algorithm*/
 		if(!inMemory(pageId)){
 			pageFaultCounter++;
 			#ifdef TEST
@@ -296,8 +309,9 @@ void pageReplacement(){
 			    repFIFO(makeMemoryEntry(pageId, currFrame->proc));
 			  }else{
 			    repFIFO(makeMemoryEntry(pageId, currFrame->proc));
+			    /*find the next contiguous page, and add it to memory*/
 			    int tempPageId = findNextCont(pageId, currFrame->proc);
-			    if(tempPageId > 0){
+			    if(tempPageId >= 0){
 			      repFIFO(makeMemoryEntry(tempPageId, currFrame->proc));
 			    }
 			  }
@@ -308,7 +322,7 @@ void pageReplacement(){
 			  }else{
 			    repLRU(makeMemoryEntry(pageId, currFrame->proc));
 			    int tempPageId = findNextCont(pageId, currFrame->proc);
-			    if(tempPageId > 0){
+			    if(tempPageId >= 0){
 			      repLRU(makeMemoryEntry(tempPageId, currFrame->proc));
 			    }
 			  }
@@ -319,13 +333,14 @@ void pageReplacement(){
 			  }else{
 			    repClock(makeMemoryEntry(pageId, currFrame->proc));
 			    int tempPageId = findNextCont(pageId, currFrame->proc);
-			    if(tempPageId > 0){
+			    if(tempPageId >= 0){
 			      repClock(makeMemoryEntry(tempPageId, currFrame->proc));
 			    }
 			  }
 			  break;
 			}
 		}else{
+		  /*if page was already in memory, then update its bits*/
 			((pageTableList[currFrame->proc])[(int)ceil(temp)-1])->accessed = counter;
 			((pageTableList[currFrame->proc])[(int)ceil(temp)-1])->r = 1;
 			#ifdef TEST
@@ -341,6 +356,7 @@ void pageReplacement(){
 
 }
 
+/*debugging, dump contents of memory*/
 void printMemory(){
 	for(int i = 0; i<memorySlots; i++){
 		//printf("----------------\n");
